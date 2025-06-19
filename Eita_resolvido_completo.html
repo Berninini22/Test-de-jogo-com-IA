@@ -1,0 +1,2225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seraph's Last Stand</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Press Start 2P', cursive;
+            image-rendering: crisp-edges; /* For pixel art sharpness */
+            image-rendering: pixelated; /* For pixel art sharpness */
+        }
+        canvas {
+            background-color: #1a1a2e; /* Dark blue background like image 2 */
+            display: block;
+            border: 2px solid #5d5d81;
+            transition: transform 0.05s ease-out; /* For screen shake */
+        }
+        #upgrade-menu, #game-over-menu, #pause-menu, #start-menu, #customize-menu { /* Added #customize-menu */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            border: 2px solid #fff;
+            padding: 20px;
+            color: #fff;
+            text-align: center;
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 100;
+            min-width: 300px; /* Ensure menus are readable */
+        }
+        .upgrade-option, #restart-button, .pause-option, .start-button, .customize-option { /* Added .customize-option */
+            background-color: #333;
+            padding: 10px 20px;
+            border: 1px solid #555;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-family: 'Press Start 2P', cursive; /* Apply font to buttons */
+            color: white;
+        }
+        .upgrade-option:hover, #restart-button:hover, .pause-option:hover, .start-button:hover, .customize-option:hover { /* Added .customize-option:hover */
+            background-color: #555;
+        }
+        h2 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 0.8em;
+            margin: 5px 0;
+        }
+        #upgrades-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #555;
+            padding: 10px;
+            margin-top: 10px;
+            text-align: left;
+            font-size: 0.7em;
+        }
+        #upgrades-list div {
+            margin-bottom: 5px;
+        }
+        #customize-menu-content {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .customize-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border: 1px solid #777;
+            padding: 10px;
+            width: 200px; /* Fixed width for sections */
+        }
+        .customize-section h3 {
+            margin-top: 0;
+            font-size: 1.1em;
+        }
+        #player-preview-canvas {
+            background-color: #2a2a4e; /* Darker blue for preview background */
+            border: 1px solid #5d5d81;
+        }
+        #customize-description { /* NEW: Style for description area */
+            margin-top: 15px;
+            padding: 10px;
+            border: 1px solid #555;
+            text-align: left;
+            min-height: 60px; /* Ensure space for description */
+            font-size: 0.9em;
+        }
+        #customize-description h4 {
+            margin-top: 0;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+
+        /* Font import for pixel art style */
+        @font-face {
+            font-family: 'Press Start 2P';
+            src: url('https://fonts.gstatic.com/s/pressstart2p/v15/8koJnJPltcpgWPx-s6Xbkbwt_UuA0g.woff2') format('woff2');
+            unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="start-menu">
+        <h2>Seraph's Last Stand</h2>
+        <button class="start-button" id="play-button">JOGAR</button>
+        <button class="start-button" id="customize-button">PERSONALIZAR</button>
+    </div>
+
+    <div id="customize-menu">
+        <h2>Personalizar</h2>
+        <div id="customize-menu-content">
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <canvas id="player-preview-canvas" width="100" height="200"></canvas>
+                <div id="customize-description">
+                    <h4>Informações:</h4>
+                    <p id="selected-item-description">Selecione um item para ver a descrição.</p>
+                </div>
+            </div>
+            <div class="customize-section">
+                <h3>Chapéus</h3>
+                <button class="customize-option" data-type="hat" data-value="MageHat">Chapéu de Mago</button>
+                <button class="customize-option" data-type="hat" data-value="Helmet">Capacete</button>
+                <button class="customize-option" data-type="hat" data-value="PropellerHat">Gorro de Hélice</button>
+                <button class="customize-option" data-type="hat" data-value="UncommonHat">Chapéu Incomum</button>
+                <button class="customize-option" data-type="hat" data-value="ChallengerHat">Chapéu de Desafiante</button>
+            </div>
+            <div class="customize-section">
+                <h3>Cajados</h3>
+                <button class="customize-option" data-type="staff" data-value="MageStaff">Cajado do Mago</button>
+                <button class="customize-option" data-type="staff" data-value="EmeraldStaff">Cajado de Esmeralda</button>
+                <button class="customize-option" data-type="staff" data-value="Trident">Tridente</button>
+                <button class="customize-option" data-type="staff" data-value="ExplosiveStaff">Cajado Explosivo</button>
+                <button class="customize-option" data-type="staff" data-value="ThunderStaff">Cajado do Trovão</button>
+                <button class="customize-option" data-type="staff" data-value="FrozenTip">Ponta Congelada</button>
+                <button class="customize-option" data-type="staff" data-value="RainbowStaff">Cajado do Arco-Íris</button>
+            </div>
+        </div>
+        <button class="start-button" id="back-to-start-from-customize">Voltar</button>
+    </div>
+
+    <div id="upgrade-menu">
+        <h2>Escolha um Aprimoramento!</h2>
+        <div id="upgrade-options-container"></div>
+    </div>
+
+    <div id="game-over-menu">
+        <h2>Game Over!</h2>
+        <p>Você foi derrotado.</p>
+        <p>Inimigos Abatidos: <span id="final-enemies-killed">0</span></p>
+        <p>Dano Total Causado: <span id="final-damage-dealt">0</span></p>
+        <button id="restart-button">Reiniciar Jogo</button>
+        <button id="return-to-start-from-gameover">Voltar ao Menu Principal</button>
+    </div>
+
+    <div id="pause-menu">
+        <h2>Jogo Pausado</h2>
+        <button class="pause-option" id="resume-button">Continuar</button>
+        <button class="pause-option" id="return-to-main-menu-button">Reiniciar Jogo</button>
+        <h3>Upgrades Adquiridos:</h3>
+        <div id="upgrades-list"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 1280;
+        canvas.height = 720;
+
+        const startMenu = document.getElementById('start-menu');
+        const playButton = document.getElementById('play-button');
+        const customizeButton = document.getElementById('customize-button');
+        const customizeMenu = document.getElementById('customize-menu');
+        const customizeOptions = document.querySelectorAll('.customize-option');
+        const backToStartFromCustomizeButton = document.getElementById('back-to-start-from-customize');
+        const playerPreviewCanvas = document.getElementById('player-preview-canvas');
+        const playerPreviewCtx = playerPreviewCanvas.getContext('2d');
+        const selectedItemDescription = document.getElementById('selected-item-description'); // NEW
+
+        const upgradeMenu = document.getElementById('upgrade-menu');
+        const upgradeOptionsContainer = document.getElementById('upgrade-options-container');
+        const gameOverMenu = document.getElementById('game-over-menu');
+        const restartButton = document.getElementById('restart-button');
+        const returnToStartFromGameoverButton = document.getElementById('return-to-start-from-gameover');
+        const finalEnemiesKilledSpan = document.getElementById('final-enemies-killed');
+        const finalDamageDealtSpan = document.getElementById('final-damage-dealt');
+        const pauseMenu = document.getElementById('pause-menu');
+        const resumeButton = document.getElementById('resume-button');
+        const returnToMainMenuButton = document.getElementById('return-to-main-menu-button');
+        const upgradesListDiv = document.getElementById('upgrades-list');
+
+
+        // Game State (Global vars for reset)
+        let gameRunning = false;
+        let showUpgradeMenu = false;
+        let showGameOverMenu = false;
+        let showStartMenu = true;
+        let showCustomizeMenu = false;
+        let isPaused = false;
+
+        // Player (initial state)
+        let player;
+        let playerStats;
+        let acquiredUpgrades;
+
+        // Player Customization
+        let playerOutfit = {
+            hat: 'MageHat',
+            staff: 'MageStaff'
+        };
+
+        // NEW: Data for hat and staff descriptions
+        const hatsData = {
+            MageHat: "Um chapéu pontudo e estiloso. Sem efeitos especiais.",
+            Helmet: "Mais armadura. Reduz sua velocidade de movimento em 20%.",
+            PropellerHat: "Tem pulo duplo. Não é possível controlar a altura do pulo (sempre pula com força máxima).",
+            UncommonHat: "Aumenta em 50% a chance de rolar upgrades incomuns.",
+            ChallengerHat: "20% de chance de obter o dobro de itens. Mas cuidado: o dobro de inimigos aparecerá."
+        };
+
+        const staffsData = {
+            MageStaff: "Dispara um projétil em linha reta normal. Dano padrão, velocidade de ataque padrão.",
+            EmeraldStaff: "Dispara projéteis teleguiados. Maior velocidade de ataque (50% mais rápido), mas causa metade do dano.",
+            Trident: "Dispara 3 projéteis em ângulo (espalhados).",
+            ExplosiveStaff: "Dispara projéteis explosivos que causam dano em área. Projéteis maiores, mas causam 20% menos dano.",
+            ThunderStaff: "Invoca um raio vindo de cima a cada 4 segundos que causa dano extra. (Não dispara projétil normal).",
+            FrozenTip: "Projetéis perfuram inimigos infinitamente. Projéteis também aplicam uma leve lentidão.",
+            RainbowStaff: "Dispara projéteis aleatórios (dano e tamanho variam aleatoriamente em 20% para mais ou para menos)."
+        };
+
+
+        // Game Objects (initial empty arrays)
+        let terrainPoints;
+        let enemies;
+        let playerProjectiles;
+        let enemyProjectiles;
+        let healingOrbs;
+        let soulOrbs;
+        let wisp;
+        let damageTexts;
+        let bleedingEnemies;
+
+        // Game Difficulty (initial state)
+        let enemySpawnInterval;
+        let lastEnemySpawnTime;
+        let enemyLevel;
+        let enemiesKilled;
+        let totalDamageDealt;
+        let enemySpawnMultiplier = 1; // For Challenger Hat
+
+        // Day Counter
+        let gameDays;
+        let lastDayIncreaseTime;
+        const DAY_DURATION_MS = 3 * 60 * 1000;
+
+        // Visual effects state
+        let screenShakeAmount = 0;
+        let screenShakeDuration = 0;
+        let lastScreenShakeTime = 0;
+        let damageFlashAlpha = 0;
+
+        // Audio Context and Sounds (Procedural Audio)
+        let audioContext;
+
+        // Input
+        const keys = {
+            a: false,
+            d: false,
+            space: false,
+            escape: false,
+        };
+        let mouseX = 0;
+        let mouseY = 0;
+        let mouseDown = false;
+
+        // --- Procedural Audio Functions ---
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playShootSound(volume = 0.1) {
+            if (!audioContext) return;
+
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.05);
+
+            gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        function playHitSound(volume = 0.4) {
+            if (!audioContext) return;
+
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            const biquadFilter = audioContext.createBiquadFilter();
+
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
+            oscillator.frequency.linearRampToValueAtTime(60, audioContext.currentTime + 0.2);
+
+            biquadFilter.type = 'lowpass';
+            biquadFilter.frequency.setValueAtTime(500, audioContext.currentTime);
+            biquadFilter.Q.setValueAtTime(1, audioContext.currentTime);
+
+            gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.4);
+
+            oscillator.connect(biquadFilter);
+            biquadFilter.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.4);
+        }
+
+        // --- Game Initialization / Reset ---
+        function initializeGame() {
+            // Player Reset
+            player = {
+                x: canvas.width / 2 - 16,
+                y: 0,
+                width: 32,
+                height: 64,
+                color: 'white',
+                dx: 0,
+                dy: 0,
+                speed: 1.5,
+                jumpForce: -6,
+                gravity: 0.2,
+                isJumping: false,
+                onGround: false,
+                maxHp: 100,
+                hp: 100,
+                exp: 0,
+                expToLevelUp: 100,
+                level: 1,
+                projectileDamage: 10,
+                critChance: 0.05,
+                critDamageMultiplier: 1.5,
+                attackSpeed: 300,
+                lastShotTime: 0,
+                invincible: false,
+                invincibleDuration: 500,
+                lastHitTime: 0,
+                defense: 0,
+                projectileSizeMultiplier: 1,
+                jumpCount: 1, // Base jumps
+                currentJumps: 1,
+                lifesteal: 0,
+                hasBarrier: false,
+                barrierActive: false,
+                barrierCooldown: 5000,
+                lastBarrierTime: 0,
+                willOWisp: false,
+                thunderboltCooldown: 0, // NEW: Cooldown for thunder staff
+                thunderboltTimer: 0, // NEW: Timer for thunder staff
+                thunderboltCount: 0, // NEW: Number of thunderbolts
+                moveDistance: 0,
+                lastX: 0,
+                regenHpPercentage: 0,
+                regenInterval: 1000,
+                lastRegenTime: 0,
+                totalDamageDealt: 0,
+                projectilePierceCount: 0, // For Frozen Tip Staff
+                jumpHeightControl: true, // For Propeller Hat
+            };
+            player.lastX = player.x;
+
+            // Player Stats Reset (for upgrades)
+            playerStats = {
+                projectileDamage: 0,
+                critChance: 0,
+                maxHp: 0,
+                jumpHeight: 0,
+                invulnerabilityDuration: 0,
+                defense: 0,
+                attackSpeed: 0,
+                soulOrbChance: 0,
+                projectileHits: 0,
+                movementSpeed: 0,
+                projectileSize: 0,
+                multipleJumps: 0,
+                lifesteal: 0,
+                critDamage: 0,
+                chanceToRollUncommon: 0,
+                healingOrbChance: 0,
+                rageMultiplier: 1,
+                enemySlowOnHit: 0,
+                numBarrierBlocks: 0,
+                numThunderbolts: 0,
+                extraItemChoices: 0,
+                tomeEffectiveness: 0,
+                willOWispSummoned: false,
+                woundChance: 0,
+                woundDamage: 0,
+                woundDuration: 0,
+                fragmentationCount: 0,
+                frictionProjectileCount: 0,
+                overheat: false,
+                doubleItemChance: 0,
+            };
+
+            // Apply hat effects - IMPORTANT: Apply this *before* other stats are affected by upgrades
+            applyHatEffect(playerOutfit.hat);
+            // Apply staff effects - IMPORTANT: Apply this *before* other stats are affected by upgrades
+            applyStaffEffect(playerOutfit.staff);
+
+
+            acquiredUpgrades = {};
+
+            // Game Objects Reset
+            terrainPoints = [];
+            enemies = [];
+            playerProjectiles = [];
+            enemyProjectiles = [];
+            healingOrbs = [];
+            soulOrbs = [];
+            wisp = null;
+            damageTexts = [];
+            bleedingEnemies = [];
+
+            // Game Difficulty Reset
+            enemySpawnInterval = 4000;
+            lastEnemySpawnTime = 0;
+            enemyLevel = 1;
+            enemiesKilled = 0;
+            totalDamageDealt = 0;
+            enemySpawnMultiplier = (playerOutfit.hat === 'ChallengerHat' ? 2 : 1); // Apply challenger hat effect
+
+            // Day Counter Reset
+            gameDays = 1;
+            lastDayIncreaseTime = Date.now();
+
+            // Visual effects reset
+            screenShakeAmount = 0;
+            screenShakeDuration = 0;
+            damageFlashAlpha = 0;
+            canvas.style.transform = 'translate(0, 0)';
+
+            // UI Reset
+            upgradeMenu.style.display = 'none';
+            gameOverMenu.style.display = 'none';
+            pauseMenu.style.display = 'none';
+            startMenu.style.display = 'none';
+            customizeMenu.style.display = 'none';
+
+            gameRunning = true;
+            showUpgradeMenu = false;
+            showGameOverMenu = false;
+            showStartMenu = false;
+            showCustomizeMenu = false;
+            isPaused = false;
+
+            initTerrain();
+            initAudio();
+        }
+
+
+        // Upgrade Options List
+        const allUpgrades = [
+            { name: "Catalisador", description: "Dano de Projétil +2", effect: () => { playerStats.projectileDamage += 2; player.projectileDamage += 2; }, tier: "Comum" },
+            { name: "Acuidade Visual", description: "Chance de Acerto Crítico +5%", effect: () => { playerStats.critChance += 0.05; player.critChance += 0.05; }, tier: "Comum" },
+            { name: "Crescimento", description: "HP Máximo +10", effect: () => { playerStats.maxHp += 10; player.hp = Math.min(player.hp + 10, player.maxHp); player.maxHp += 10; }, tier: "Comum" },
+            { name: "Impulso", description: "Força de Pulo +30%", effect: () => { playerStats.jumpHeight += 0.3; player.jumpForce *= 1.3; }, tier: "Comum" },
+            { name: "Renovar", description: "Cura para HP Máximo", effect: () => { player.hp = player.maxHp; }, tier: "Comum" },
+            { name: "Resistência", description: "Defesa +4%", effect: () => { playerStats.defense += 0.04; player.defense += 0.04; }, tier: "Comum" },
+            { name: "Ressonância", description: "Velocidade de Ataque +12%", effect: () => { playerStats.attackSpeed += 0.12; player.attackSpeed *= (1 - 0.12); }, tier: "Comum" },
+            { name: "Almas", description: "Chance de inimigo derrubar orbe de alma 1%", effect: () => { playerStats.soulOrbChance += 0.01; }, tier: "Comum" },
+            { name: "Estabilidade", description: "Projétil aguenta +1 acerto antes de explodir", effect: () => { playerStats.projectileHits += 1; }, tier: "Comum" },
+            { name: "Agilidade", description: "Velocidade de Movimento +20%", effect: () => { playerStats.movementSpeed += 0.2; player.speed *= 1.2; }, tier: "Comum" },
+
+            { name: "Catalisador+", description: "Dano de Projétil +4", effect: () => { playerStats.projectileDamage += 4; player.projectileDamage += 4; }, tier: "Incomum" },
+            { name: "Carga", description: "Tamanho do Projétil +20%", effect: () => { playerStats.projectileSize += 0.2; player.projectileSizeMultiplier += 0.2; }, tier: "Incomum" },
+            { name: "Manto", description: "Duração de Invulnerabilidade após dano +10%", effect: () => { playerStats.invulnerabilityDuration += 0.1; player.invincibleDuration *= 1.1; }, tier: "Incomum" },
+            { name: "Fragmentação", description: "Ao ser morto, inimigos liberam 2 projéteis mais fracos em direções aleatórias", effect: () => { playerStats.fragmentationCount += 2; }, tier: "Incomum" },
+            { name: "Atrito", description: "Para cada 100 unidades que você corre, 1 projétil explosivo é lançado para cima", effect: () => { playerStats.frictionProjectileCount += 1; }, tier: "Incomum" },
+            { name: "Crescimento+", description: "HP Máximo +20", effect: () => { playerStats.maxHp += 20; player.hp = Math.min(player.hp + 20, player.maxHp); player.maxHp += 20; }, tier: "Incomum" },
+            { name: "Jato", description: "Adiciona +1 Pulo Extra", effect: () => { playerStats.multipleJumps += 1; player.jumpCount++; player.currentJumps++; }, tier: "Incomum" },
+            { name: "Sanguessuga", description: "Roubo de Vida de 3% do Dano Causado", effect: () => { playerStats.lifesteal += 0.03; player.lifesteal += 0.03; }, tier: "Incomum" },
+            { name: "Sorte", description: "Maior chance de rolar itens incomuns", effect: () => { playerStats.chanceToRollUncommon += 0.1; }, tier: "Incomum" },
+            { name: "Orbe de Cura", description: "Inimigos mortos têm 5% de chance de derrubar um orbe de cura", effect: () => { playerStats.healingOrbChance += 0.05; }, tier: "Incomum" },
+            { name: "Precisão", description: "Acerto Crítico causa +50% de dano", effect: () => { playerStats.critDamage += 0.5; player.critDamageMultiplier += 0.5; }, tier: "Incomum" },
+            { name: "Fúria", description: "Se abaixo de 50% HP, aumenta seu dano de projétil e corpo a corpo (até 50%)", effect: () => { /* Logic applied in update */ }, tier: "Incomum" },
+            { name: "Regeneração", description: "Regenera %HP com base no número de inimigos vivos", effect: () => { player.regenHpPercentage += 0.005; }, tier: "Incomum" },
+            { name: "Ressonância+", description: "Velocidade de Ataque +24%", effect: () => { playerStats.attackSpeed += 0.24; player.attackSpeed *= (1 - 0.24); }, tier: "Incomum" },
+            { name: "Encolher", description: "Deixa você 10% menor", effect: () => { player.width *= 0.9; player.height *= 0.9; }, tier: "Incomum" },
+            { name: "Agilidade+", description: "Velocidade de Movimento +40%", effect: () => { playerStats.movementSpeed += 0.4; player.speed *= 1.4; }, tier: "Incomum" },
+            { name: "Trovão", description: "Chama 2 raios dos céus a cada poucos segundos", effect: () => { player.thunderboltCooldown = 5000; player.thunderboltCount += 2; }, tier: "Incomum" },
+
+            { name: "Avaliação", description: "+1 escolha de item a partir de agora", effect: () => { playerStats.extraItemChoices += 1; }, tier: "Épico" },
+            { name: "Barreira", description: "Cria um escudo que bloqueia dano uma vez a cada poucos segundos", effect: () => { player.hasBarrier = true; playerStats.numBarrierBlocks += 1; }, tier: "Épico" },
+            { name: "Congelar", description: "Inimigos ficam 1% mais lentos toda vez que levam dano (acumula até 80%)", effect: () => { playerStats.enemySlowOnHit += 0.01; }, tier: "Épico" },
+            { name: "Fragmentação+", description: "Ao ser morto, inimigos liberam 6 projéteis mais fracos em direções aleatórias", effect: () => { playerStats.fragmentationCount += 6; }, tier: "Épico" },
+            { name: "Atrito+", description: "Para cada 100 unidades que você corre, 3 projéteis explosivos são lançados para cima", effect: () => { playerStats.frictionProjectileCount += 3; }, tier: "Épico" },
+            { name: "Crescimento++", description: "HP Máximo +40", effect: () => { playerStats.maxHp += 40; player.hp = Math.min(player.hp + 40, player.maxHp); player.maxHp += 40; }, tier: "Épico" },
+            { name: "Sanguessuga+", description: "Roubo de Vida de 9% do Dano Causado", effect: () => { playerStats.lifesteal += 0.09; player.lifesteal += 0.09; }, tier: "Épico" },
+            { name: "Superaquecimento", description: "Seu corpo causa 40 de dano ao contato", effect: () => { playerStats.overheat = true; }, tier: "Épico" },
+            { name: "Trovão+", description: "Chama 6 raios dos céus a cada poucos segundos", effect: () => { player.thunderboltCooldown = 3000; player.thunderboltCount += 6; }, tier: "Épico" },
+            { name: "Tomo", description: "Novos itens comuns (brancos) que você pega são 35% mais eficazes", effect: () => { playerStats.tomeEffectiveness += 0.35; }, tier: "Épico" },
+            { name: "Fogo-Fátuo", description: "Invoca um wisp que herda metade do seu dano e velocidade de ataque", effect: () => { player.willOWisp = true; playerStats.willOWispSummoned = true; wisp = new Wisp(); }, tier: "Épico" },
+            { name: "Ferida", description: "Causar dano aplica sangramento ao inimigo (dano extra)", effect: () => { playerStats.woundChance += 0.1; playerStats.woundDamage = 5; playerStats.woundDuration = 3000;}, tier: "Épico" },
+        ];
+
+
+        // --- Procedural Terrain Generation ---
+        function initTerrain() {
+            terrainPoints = [];
+            const segmentWidth = 20;
+            const maxElevationChange = 15;
+            const minGroundHeight = canvas.height * 0.8; // Made slightly lower (from 0.75 in last version)
+            const maxGroundHeight = canvas.height * 0.95; // Also lowered
+
+            let currentHeight = Math.random() * (maxGroundHeight - minGroundHeight) + minGroundHeight;
+
+            for (let x = 0; x <= canvas.width; x += segmentWidth) {
+                let nextHeight = currentHeight + (Math.random() * maxElevationChange * 2) - maxElevationChange;
+                nextHeight = Math.max(minGroundHeight, Math.min(maxGroundHeight, nextHeight));
+
+                terrainPoints.push({ x: x, y: nextHeight });
+                currentHeight = nextHeight;
+            }
+
+            const playerTerrainY = getTerrainY(canvas.width / 2);
+            player.x = canvas.width / 2 - player.width / 2;
+            player.y = playerTerrainY - player.height;
+        }
+
+        // Helper function to get terrain Y coordinate for a given X
+        function getTerrainY(x) {
+            if (terrainPoints.length === 0) return canvas.height;
+
+            for (let i = 0; i < terrainPoints.length - 1; i++) {
+                const p1 = terrainPoints[i];
+                const p2 = terrainPoints[i + 1];
+
+                if (x >= p1.x && x <= p2.x) {
+                    const progress = (x - p1.x) / (p2.x - p1.x);
+                    return p1.y + (p2.y - p1.y) * progress;
+                }
+            }
+            return terrainPoints[terrainPoints.length - 1].y;
+        }
+
+
+        // --- Game Object Classes/Constructors ---
+
+        function Projectile(x, y, targetX, targetY, isPlayer, damage, type = 'normal', sizeMultiplier = 1, hitsToExplode = 1, explosionRadius = 0) {
+            this.x = x;
+            this.y = y;
+            this.radius = (isPlayer ? 10 : 9) * sizeMultiplier;
+            this.isPlayer = isPlayer;
+            this.damage = damage;
+            this.speed = (isPlayer ? 3 : 2);
+            this.hitsRemaining = hitsToExplode;
+            this.type = type; // 'normal', 'thunder', 'friction', 'emerald_guided', 'trident', 'explosive', 'frozen_tip', 'rainbow'
+            this.explosionRadius = explosionRadius; // For explosive projectiles
+            this.guidanceStrength = 0.05; // For emerald_guided
+
+            const angle = Math.atan2(targetY - y, targetX - x);
+            this.dx = Math.cos(angle) * this.speed;
+            this.dy = Math.sin(angle) * this.speed;
+
+            // Store original dx, dy for non-guided projectiles
+            this.originalDx = this.dx;
+            this.originalDy = this.dy;
+
+            // For emerald_guided, store target (optional, can recalculate)
+            this.targetEnemy = null; // Will be set on creation for guided projectiles
+            if (this.type === 'emerald_guided' && enemies.length > 0) {
+                // Find closest enemy or a random one
+                this.targetEnemy = enemies.reduce((prev, curr) => {
+                    const distPrev = Math.hypot(this.x - prev.x, this.y - prev.y);
+                    const distCurr = Math.hypot(this.x - curr.x, this.y - curr.y);
+                    return distPrev < distCurr ? prev : curr;
+                });
+            }
+
+            switch (this.type) {
+                case 'normal': this.color = isPlayer ? 'yellow' : 'red'; break;
+                case 'thunder': this.color = 'cyan'; this.radius = 15 * sizeMultiplier; break;
+                case 'friction': this.color = 'orange'; this.radius = 12 * sizeMultiplier; break;
+                case 'emerald_guided': this.color = 'lightgreen'; this.radius = 8 * sizeMultiplier; break;
+                case 'trident': this.color = 'aqua'; this.radius = 9 * sizeMultiplier; break;
+                case 'explosive': this.color = 'darkred'; this.radius = 15 * sizeMultiplier; break;
+                case 'frozen_tip': this.color = 'lightblue'; this.radius = 10 * sizeMultiplier; break;
+                case 'rainbow': this.color = `hsl(${Math.random() * 360}, 100%, 50%)`; this.radius = 10 * sizeMultiplier; break;
+            }
+        }
+
+        function Enemy(x, y, dayLevel, type = 'shooter') {
+            this.x = x;
+            this.y = y;
+            this.width = 40;
+            this.height = 40;
+            this.dx = 0;
+            this.dy = 0;
+            this.dayLevel = dayLevel;
+            this.slowFactor = 1;
+            this.type = type;
+            this.contactDamage = 10;
+            this.onGround = false;
+
+            const baseDifficultyMultiplier = 2;
+            const levelHpMultiplier = 1 + (this.dayLevel - 1) * 0.1;
+            const levelDamageMultiplier = 1 + (this.dayLevel - 1) * 0.05;
+
+
+            switch (this.type) {
+                case 'shooter':
+                    this.speed = 0.3 * baseDifficultyMultiplier;
+                    this.maxHp = (50 * levelHpMultiplier) * baseDifficultyMultiplier;
+                    this.hp = this.maxHp;
+                    this.shootInterval = 2000 - (this.dayLevel * 20);
+                    if (this.shootInterval < 400) this.shootInterval = 400;
+                    this.color = 'purple';
+                    this.contactDamage = (10 * levelDamageMultiplier) * baseDifficultyMultiplier;
+                    break;
+                case 'swift':
+                    this.speed = 1.0 * baseDifficultyMultiplier;
+                    this.maxHp = (25 * levelHpMultiplier) * baseDifficultyMultiplier;
+                    this.hp = this.maxHp;
+                    this.shootInterval = 9999999;
+                    this.color = 'lightgreen';
+                    this.width = 45;
+                    this.height = 45;
+                    this.contactDamage = (10 * levelDamageMultiplier) * baseDifficultyMultiplier;
+                    break;
+                case 'tank':
+                    this.speed = 0.1 * baseDifficultyMultiplier;
+                    this.maxHp = (75 * levelHpMultiplier) * baseDifficultyMultiplier;
+                    this.hp = this.maxHp;
+                    this.shootInterval = 9999999;
+                    this.color = 'gray';
+                    this.width = 50;
+                    this.height = 50;
+                    this.contactDamage = (25 * levelDamageMultiplier) * baseDifficultyMultiplier;
+                    break;
+            }
+            this.lastShotTime = Date.now();
+            this.expValue = 20 * this.dayLevel;
+            if (this.type === 'tank') this.expValue *= 1.2;
+            if (this.type === 'swift') this.expValue *= 0.8;
+
+            this.bleeding = {
+                active: false,
+                damage: 0,
+                duration: 0,
+                lastTick: 0,
+                tickInterval: 500,
+                ticksRemaining: 0,
+            };
+        }
+
+        function Wisp() {
+            this.x = player.x;
+            this.y = player.y;
+            this.width = 16;
+            this.height = 16;
+            this.color = 'lightgreen';
+            this.target = player;
+            this.damage = player.projectileDamage / 2;
+            this.attackSpeed = player.attackSpeed * 2;
+            this.lastShotTime = 0;
+        }
+
+        function DamageText(x, y, damage, isCrit = false, isBlocked = false, textColor = 'white') {
+            this.value = isBlocked ? "Bloqueado!" : Math.round(damage);
+            this.x = x;
+            this.y = y;
+            this.alpha = 1.0;
+            this.dy = -0.5;
+            this.color = textColor || (isBlocked ? 'cyan' : (isCrit ? 'orange' : 'white'));
+            this.fontSize = isCrit ? '20px' : '16px';
+            this.lifetime = 1500;
+            this.spawnTime = Date.now();
+        }
+
+        // --- Customization Functions (NEW) ---
+        function applyHatEffect(hatType) {
+            // Reset hat-specific stats first
+            player.speed = 1.5; // Base speed
+            player.jumpCount = 1; // Base jumps
+            player.currentJumps = 1;
+            player.jumpHeightControl = true;
+            playerStats.chanceToRollUncommon = 0; // Reset
+            playerStats.doubleItemChance = 0; // Reset
+            // enemySpawnMultiplier will be set when initializing game
+            // so we don't reset it here to avoid conflicts
+
+            switch (hatType) {
+                case 'MageHat':
+                    // Default, no special effects
+                    break;
+                case 'Helmet':
+                    player.speed *= 0.8; // 20% slower
+                    break;
+                case 'PropellerHat':
+                    player.jumpCount = 2; // Double jump
+                    player.currentJumps = 2;
+                    player.jumpHeightControl = false; // Cannot control jump height
+                    break;
+                case 'UncommonHat':
+                    playerStats.chanceToRollUncommon += 0.5; // Significantly higher chance for uncommon
+                    break;
+                case 'ChallengerHat':
+                    playerStats.doubleItemChance = 0.2; // 20% chance for double items
+                    // enemySpawnMultiplier is set during initializeGame
+                    break;
+            }
+        }
+
+        function applyStaffEffect(staffType) {
+            // Reset staff-specific stats first to their *base* values (before any upgrades)
+            // This is crucial to ensure upgrades layer correctly over base stats + staff effects
+            player.projectileDamage = 10; // Base damage
+            player.attackSpeed = 300; // Base attack speed (smaller is faster)
+            player.projectilePierceCount = 0; // Base pierce
+            player.thunderboltCooldown = 0;
+            player.thunderboltCount = 0;
+            player.projectileType = 'normal';
+            player.projectileExplosionRadius = 0;
+            player.projectileSizeMultiplier = 1; // Base size
+
+            // Now apply staff specific effects
+            switch (staffType) {
+                case 'MageStaff':
+                    // Default, no special effects
+                    break;
+                case 'EmeraldStaff':
+                    player.projectileDamage *= 0.5; // Half damage
+                    player.attackSpeed *= 0.5; // Double attack speed (half interval)
+                    player.projectileType = 'emerald_guided';
+                    break;
+                case 'Trident':
+                    player.projectileType = 'trident';
+                    break;
+                case 'ExplosiveStaff':
+                    player.projectileType = 'explosive';
+                    player.projectileExplosionRadius = 50; // Small explosion radius
+                    player.projectileDamage *= 0.8; // Slightly reduced damage for AoE
+                    player.projectileSizeMultiplier = 1.5; // Bigger projectile
+                    break;
+                case 'ThunderStaff':
+                    player.thunderboltCooldown = 4000; // Faster cooldown for dedicated thunder staff
+                    player.thunderboltCount = 1; // Summons 1 lightning bolt
+                    break;
+                case 'FrozenTip':
+                    player.projectilePierceCount = 100; // Effectively infinite pierce
+                    player.projectileType = 'frozen_tip';
+                    playerStats.enemySlowOnHit += 0.005; // Added small slow effect
+                    break;
+                case 'RainbowStaff':
+                    player.projectileType = 'rainbow';
+                    // Random damage is applied when the projectile is created, not here.
+                    // Size multiplier also applies there.
+                    break;
+            }
+
+            // After applying base staff effects, add upgrade bonuses
+            player.projectileDamage += playerStats.projectileDamage;
+            player.attackSpeed *= (1 - playerStats.attackSpeed); // Attack speed upgrade is multiplicative
+        }
+
+
+        // --- Collision Detection ---
+
+        function checkCollision(obj1, obj2) {
+            return obj1.x < obj2.x + obj2.width &&
+                   obj1.x + obj1.width > obj2.x &&
+                   obj1.y < obj2.y + obj2.height &&
+                   obj1.y + obj1.height > obj2.y;
+        }
+
+        function checkCircleRectangleCollision(circle, rect) {
+            let testX = circle.x;
+            let testY = circle.y;
+
+            if (circle.x < rect.x) {
+                testX = rect.x;
+            } else if (circle.x > rect.x + rect.width) {
+                testX = rect.x + rect.width;
+            }
+
+            if (circle.y < rect.y) {
+                testY = rect.y;
+            } else if (circle.y > rect.y + rect.height) {
+                testY = rect.y + rect.height;
+            }
+
+            let distX = circle.x - testX;
+            let distY = circle.y - testY;
+            let distance = Math.sqrt((distX * distX) + (distY * distY));
+
+            return distance <= circle.radius;
+        }
+
+        function getEntitiesInRadius(centerX, centerY, radius, entitiesArray) {
+            const affected = [];
+            entitiesArray.forEach(entity => {
+                const dist = Math.hypot(centerX - (entity.x + entity.width/2), centerY - (entity.y + entity.height/2));
+                if (dist <= radius) {
+                    affected.push(entity);
+                }
+            });
+            return affected;
+        }
+
+        // --- Game Logic Updates ---
+
+        function updatePlayer(deltaTime) {
+            player.dx = 0;
+            if (keys.a) player.dx = -player.speed;
+            if (keys.d) player.dx = player.speed;
+
+            player.x += player.dx;
+
+            player.dy += player.gravity;
+            player.y += player.dy;
+
+            const terrainYAtPlayerX = getTerrainY(player.x + player.width / 2);
+
+            if (player.y + player.height > terrainYAtPlayerX) {
+                player.y = terrainYAtPlayerX - player.height;
+                player.dy = 0;
+                player.onGround = true;
+                player.isJumping = false;
+                player.currentJumps = player.jumpCount;
+            } else {
+                player.onGround = false;
+            }
+
+            if (player.onGround && player.dx !== 0) {
+                const nextX = player.x + player.dx;
+                const nextTerrainY = getTerrainY(nextX + player.width / 2);
+
+                if (nextTerrainY < player.y + player.height) {
+                    player.y = nextTerrainY - player.height;
+                }
+            }
+
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+
+
+            // Shooting logic
+            if (mouseDown) {
+                const now = Date.now();
+                if (now - player.lastShotTime > player.attackSpeed) {
+                    // Handle different staff types
+                    switch (playerOutfit.staff) {
+                        case 'MageStaff':
+                            playerProjectiles.push(new Projectile(
+                                player.x + player.width / 2, player.y + player.height / 2,
+                                mouseX, mouseY, true, player.projectileDamage, 'normal', player.projectileSizeMultiplier, 1 + player.projectilePierceCount + playerStats.projectileHits
+                            ));
+                            break;
+                        case 'EmeraldStaff':
+                            playerProjectiles.push(new Projectile(
+                                player.x + player.width / 2, player.y + player.height / 2,
+                                mouseX, mouseY, true, player.projectileDamage, 'emerald_guided', player.projectileSizeMultiplier, 1 + player.projectilePierceCount + playerStats.projectileHits
+                            ));
+                            break;
+                        case 'Trident':
+                            const angleToMouse = Math.atan2(mouseY - (player.y + player.height / 2), mouseX - (player.x + player.width / 2));
+                            const spreadAngle = Math.PI / 8; // 22.5 degrees total spread
+                            for (let i = -1; i <= 1; i++) {
+                                const newAngle = angleToMouse + i * spreadAngle / 2;
+                                const targetX = player.x + player.width / 2 + Math.cos(newAngle) * 500;
+                                const targetY = player.y + player.height / 2 + Math.sin(newAngle) * 500;
+                                playerProjectiles.push(new Projectile(
+                                    player.x + player.width / 2, player.y + player.height / 2,
+                                    targetX, targetY, true, player.projectileDamage, 'trident', player.projectileSizeMultiplier, 1 + player.projectilePierceCount + playerStats.projectileHits
+                                ));
+                            }
+                            break;
+                        case 'ExplosiveStaff':
+                            playerProjectiles.push(new Projectile(
+                                player.x + player.width / 2, player.y + player.height / 2,
+                                mouseX, mouseY, true, player.projectileDamage, 'explosive', player.projectileSizeMultiplier, 1 + player.projectilePierceCount + playerStats.projectileHits, player.projectileExplosionRadius
+                            ));
+                            break;
+                        case 'ThunderStaff':
+                             // Thunder Staff now works as an active ability on cooldown, not direct projectile
+                             // We'll handle its specific logic in player update below, not here.
+                             break;
+                        case 'FrozenTip':
+                            playerProjectiles.push(new Projectile(
+                                player.x + player.width / 2, player.y + player.height / 2,
+                                mouseX, mouseY, true, player.projectileDamage, 'frozen_tip', player.projectileSizeMultiplier, 1 + player.projectilePierceCount + playerStats.projectileHits
+                            ));
+                            break;
+                        case 'RainbowStaff':
+                            const randomDamage = player.projectileDamage * (0.8 + Math.random() * 0.4); // Random damage
+                            const randomSize = player.projectileSizeMultiplier * (0.8 + Math.random() * 0.4); // Random size
+                            playerProjectiles.push(new Projectile(
+                                player.x + player.width / 2, player.y + player.height / 2,
+                                mouseX, mouseY, true, randomDamage, 'rainbow', randomSize, 1 + player.projectilePierceCount + playerStats.projectileHits
+                            ));
+                            break;
+                    }
+                    if (playerOutfit.staff !== 'ThunderStaff') { // ThunderStaff has its own "shot"
+                        playShootSound(0.08);
+                    }
+                    player.lastShotTime = now;
+                }
+            }
+
+            // Invincibility frame
+            if (player.invincible && Date.now() - player.lastHitTime > player.invincibleDuration) {
+                player.invincible = false;
+            }
+
+            // Barrier cooldown
+            if (player.hasBarrier) {
+                if (!player.barrierActive && Date.now() - player.lastBarrierTime > player.barrierCooldown) {
+                    player.barrierActive = true;
+                }
+            }
+
+            // Will-O-Wisp update
+            if (player.willOWisp && wisp) {
+                wisp.x = player.x - wisp.width - 10;
+                wisp.y = player.y + player.height / 2 - wisp.height / 2;
+
+                const now = Date.now();
+                if (now - wisp.lastShotTime > wisp.attackSpeed) {
+                    const targetEnemy = enemies[0];
+                    if (targetEnemy) {
+                        playerProjectiles.push(new Projectile(
+                            wisp.x + wisp.width / 2, wisp.y + wisp.height / 2,
+                            targetEnemy.x + targetEnemy.width / 2, targetEnemy.y + targetEnemy.height / 2,
+                            true, wisp.damage, 'normal', 1, 1
+                        ));
+                        wisp.lastShotTime = now;
+                    }
+                }
+            }
+
+            // Thunderbolt staff logic
+            if (playerOutfit.staff === 'ThunderStaff' || player.thunderboltCount > 0) { // Check both for staff and upgrade
+                const now = Date.now();
+                if (now - player.thunderboltTimer > player.thunderboltCooldown) {
+                    for (let i = 0; i < player.thunderboltCount; i++) {
+                        const randomEnemy = enemies[Math.floor(Math.random() * enemies.length)];
+                        if (randomEnemy) {
+                            const actualDamage = player.projectileDamage * 2; // Damage directly from staff
+                            randomEnemy.hp -= actualDamage;
+                            player.totalDamageDealt += actualDamage;
+                            damageTexts.push(new DamageText(randomEnemy.x + randomEnemy.width/2, randomEnemy.y, actualDamage, true, false, 'gold'));
+                            if (playerStats.enemySlowOnHit > 0) {
+                                randomEnemy.slowFactor = Math.max(0.2, randomEnemy.slowFactor - playerStats.enemySlowOnHit);
+                            }
+                            if (playerStats.woundChance > 0 && Math.random() < playerStats.woundChance) {
+                                applyBleeding(randomEnemy, playerStats.woundDamage, playerStats.woundDuration);
+                            }
+                        }
+                    }
+                    player.thunderboltTimer = now;
+                }
+            }
+
+            // Friction projectile
+            if (playerStats.frictionProjectileCount > 0) {
+                player.moveDistance += Math.abs(player.x - player.lastX);
+                if (player.moveDistance >= 100) {
+                    for (let i = 0; i < playerStats.frictionProjectileCount; i++) {
+                        playerProjectiles.push(new Projectile(
+                            player.x + player.width / 2, player.y + player.height / 2,
+                            player.x + player.width / 2 + (Math.random() - 0.5) * 50,
+                            0,
+                            true, player.projectileDamage * 1.5, 'friction', 1.5, 1
+                        ));
+                    }
+                    player.moveDistance = 0;
+                }
+                player.lastX = player.x;
+            }
+
+            // Rage
+            if (player.hp / player.maxHp < 0.5) {
+                playerStats.rageMultiplier = 1 + (0.5 - (player.hp / player.maxHp));
+            } else {
+                playerStats.rageMultiplier = 1;
+            }
+
+            // Regrowth
+            if (player.regenHpPercentage > 0 && enemies.length > 0) {
+                const now = Date.now();
+                if (now - player.lastRegenTime > player.regenInterval) {
+                    const healAmount = player.maxHp * player.regenHpPercentage * enemies.length;
+                    player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                    player.lastRegenTime = now;
+                }
+            }
+
+            // Check for game over
+            if (player.hp <= 0 && !showGameOverMenu) {
+                gameRunning = false;
+                showGameOverMenu = true;
+                displayGameOverMenu();
+            }
+
+            // Update game days
+            const now = Date.now();
+            if (now - lastDayIncreaseTime > DAY_DURATION_MS) {
+                gameDays++;
+                lastDayIncreaseTime = now;
+            }
+        }
+
+        function updateEnemies(deltaTime) {
+            const now = Date.now();
+
+            if (now - lastEnemySpawnTime > enemySpawnInterval && !showUpgradeMenu && !showGameOverMenu && !isPaused && !showCustomizeMenu) {
+                const numEnemiesToSpawn = 1 * enemySpawnMultiplier; // Apply Challenger Hat multiplier
+
+                for (let n = 0; n < numEnemiesToSpawn; n++) {
+                    const spawnX = Math.random() * (canvas.width - 40);
+                    const spawnY = 0;
+
+                    let enemyType = 'shooter';
+                    const rand = Math.random();
+                    if (rand < 0.5) {
+                        enemyType = 'shooter';
+                    } else if (rand < 0.8 && gameDays >= 2) {
+                        enemyType = 'swift';
+                    } else {
+                        enemyType = 'tank';
+                    }
+                    enemies.push(new Enemy(spawnX, spawnY, gameDays, enemyType));
+                }
+                lastEnemySpawnTime = now;
+
+                if (enemySpawnInterval > 500) {
+                    enemySpawnInterval -= 100;
+                }
+            }
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+
+                const targetX = player.x + player.width / 2;
+                const targetY = player.y + player.height / 2;
+
+                const angle = Math.atan2(targetY - enemy.y, targetX - enemy.x);
+                enemy.dx = Math.cos(angle) * enemy.speed * enemy.slowFactor;
+                enemy.dy = Math.sin(angle) * enemy.speed * enemy.slowFactor;
+
+                enemy.x += enemy.dx;
+                enemy.y += enemy.dy;
+
+                const terrainYAtEnemyX = getTerrainY(enemy.x + enemy.width / 2);
+                if (enemy.y + enemy.height < terrainYAtEnemyX) {
+                    enemy.dy += player.gravity;
+                } else {
+                    enemy.y = terrainYAtEnemyX - enemy.height;
+                    enemy.dy = 0;
+                    enemy.onGround = true;
+                }
+
+                if (enemy.type === 'shooter' && now - enemy.lastShotTime > enemy.shootInterval) {
+                    enemyProjectiles.push(new Projectile(
+                        enemy.x + enemy.width / 2,
+                        enemy.y + enemy.height / 2,
+                        player.x + player.width / 2,
+                        player.y + player.height / 2,
+                        false,
+                        enemy.contactDamage
+                    ));
+                    enemy.lastShotTime = now;
+                }
+
+                if (checkCollision(player, enemy)) {
+                    if (!player.invincible) {
+                        let damageTaken = enemy.contactDamage * (1 - player.defense);
+                        if (player.hasBarrier && player.barrierActive) {
+                            player.barrierActive = false;
+                            player.lastBarrierTime = Date.now();
+                            damageTexts.push(new DamageText(player.x + player.width/2, player.y, null, false, true));
+                        } else {
+                            player.hp -= damageTaken;
+                            player.invincible = true;
+                            player.lastHitTime = Date.now();
+                            damageTexts.push(new DamageText(player.x + player.width/2, player.y, damageTaken));
+                            triggerScreenShake(3, 150);
+                            damageFlashAlpha = 1;
+                            playHitSound(0.4);
+                        }
+                    }
+
+                    if (playerStats.overheat) {
+                        const overheatDamage = 40;
+                        enemy.hp -= overheatDamage;
+                        player.totalDamageDealt += overheatDamage;
+                        damageTexts.push(new DamageText(enemy.x + enemy.width/2, enemy.y, overheatDamage));
+                    }
+                }
+
+                if (enemy.hp <= 0 || enemy.y > canvas.height + 100) {
+                    if (enemy.hp <= 0) {
+                        enemiesKilled++;
+                        player.exp += enemy.expValue;
+                        handleEnemyDeathDrops(enemy);
+                    }
+                    enemies.splice(i, 1);
+                }
+            }
+        }
+
+        function updateProjectiles(deltaTime) {
+            // Player Projectiles
+            for (let i = playerProjectiles.length - 1; i >= 0; i--) {
+                const proj = playerProjectiles[i];
+
+                if (proj.type === 'emerald_guided' && proj.targetEnemy) {
+                    // Re-target if old target is dead or out of range
+                    if (proj.targetEnemy.hp <= 0 || !enemies.includes(proj.targetEnemy)) {
+                        proj.targetEnemy = enemies.reduce((prev, curr) => {
+                            const distPrev = Math.hypot(proj.x - prev.x, proj.y - prev.y);
+                            const distCurr = Math.hypot(proj.x - curr.x, proj.y - curr.y);
+                            return distPrev < distCurr ? prev : curr;
+                        }, null);
+                    }
+
+                    if (proj.targetEnemy) {
+                        const targetX = proj.targetEnemy.x + proj.targetEnemy.width / 2;
+                        const targetY = proj.targetEnemy.y + proj.targetEnemy.height / 2;
+                        const currentAngle = Math.atan2(proj.dy, proj.dx);
+                        const targetAngle = Math.atan2(targetY - proj.y, targetX - proj.x);
+
+                        // Smoothly adjust angle
+                        let angleDiff = targetAngle - currentAngle;
+                        if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                        if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+                        const maxTurn = proj.guidanceStrength;
+                        let newAngle = currentAngle + Math.min(Math.max(angleDiff, -maxTurn), maxTurn);
+
+                        proj.dx = Math.cos(newAngle) * proj.speed;
+                        proj.dy = Math.sin(newAngle) * proj.speed;
+                    }
+                }
+
+                proj.x += proj.dx;
+                proj.y += proj.dy;
+
+                let hitEnemy = false;
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    if (checkCircleRectangleCollision(proj, enemy)) {
+                        let actualDamage = proj.damage * playerStats.rageMultiplier;
+                        let isCrit = false;
+
+                        if (Math.random() < player.critChance) {
+                            actualDamage *= player.critDamageMultiplier;
+                            isCrit = true;
+                        }
+
+                        // Explosive Staff effect
+                        if (proj.type === 'explosive' && proj.explosionRadius > 0) {
+                            const affectedEnemies = getEntitiesInRadius(proj.x, proj.y, proj.explosionRadius, enemies);
+                            affectedEnemies.forEach(aoeEnemy => {
+                                const aoeDamage = actualDamage / affectedEnemies.length; // Damage distributed
+                                aoeEnemy.hp -= aoeDamage;
+                                player.totalDamageDealt += aoeDamage;
+                                damageTexts.push(new DamageText(aoeEnemy.x + aoeEnemy.width/2, aoeEnemy.y, aoeDamage, isCrit));
+                                if (playerStats.enemySlowOnHit > 0) {
+                                    aoeEnemy.slowFactor = Math.max(0.2, aoeEnemy.slowFactor - playerStats.enemySlowOnHit);
+                                }
+                                if (playerStats.woundChance > 0 && Math.random() < playerStats.woundChance) {
+                                    applyBleeding(aoeEnemy, playerStats.woundDamage, playerStats.woundDuration);
+                                }
+                            });
+                            proj.hitsRemaining = 0; // Explosive projectiles hit once and explode
+                            hitEnemy = true; // Mark as hit to remove it
+                            break;
+                        } else { // Normal hit
+                            enemy.hp -= actualDamage;
+                            player.totalDamageDealt += actualDamage;
+                            damageTexts.push(new DamageText(enemy.x + enemy.width/2, enemy.y, actualDamage, isCrit));
+                        }
+
+                        // Lifesteal
+                        if (player.lifesteal > 0) {
+                            player.hp = Math.min(player.maxHp, player.hp + (actualDamage * player.lifesteal));
+                        }
+
+                        // Cold upgrade / Frozen Tip
+                        if (playerStats.enemySlowOnHit > 0 || proj.type === 'frozen_tip') {
+                            enemy.slowFactor = Math.max(0.2, enemy.slowFactor - playerStats.enemySlowOnHit);
+                        }
+
+                        // Wound
+                        if (playerStats.woundChance > 0 && Math.random() < playerStats.woundChance) {
+                             applyBleeding(enemy, playerStats.woundDamage, playerStats.woundDuration);
+                        }
+
+                        if (proj.type !== 'frozen_tip') { // Frozen Tip pierces
+                            proj.hitsRemaining--;
+                        }
+                        hitEnemy = true;
+                        if (proj.hitsRemaining <= 0) break; // If it can't pierce anymore, break
+                    }
+                }
+
+                if (hitEnemy && proj.hitsRemaining <= 0) {
+                    playerProjectiles.splice(i, 1);
+                } else if (proj.x < -proj.radius || proj.x > canvas.width + proj.radius || proj.y < -proj.radius || proj.y > canvas.height + proj.radius) {
+                    playerProjectiles.splice(i, 1);
+                }
+            }
+
+            // Enemy Projectiles
+            for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
+                const proj = enemyProjectiles[i];
+                proj.x += proj.dx;
+                proj.y += proj.dy;
+
+                if (checkCircleRectangleCollision(proj, player)) {
+                    if (!player.invincible) {
+                        let damageTaken = proj.damage * (1 - player.defense);
+                        if (player.hasBarrier && player.barrierActive) {
+                            player.barrierActive = false;
+                            player.lastBarrierTime = Date.now();
+                            damageTexts.push(new DamageText(player.x + player.width/2, player.y, null, false, true));
+                        } else {
+                            player.hp -= damageTaken;
+                            player.invincible = true;
+                            player.lastHitTime = Date.now();
+                            damageTexts.push(new DamageText(player.x + player.width/2, player.y, damageTaken));
+                            triggerScreenShake(3, 150);
+                            damageFlashAlpha = 1;
+                            playHitSound(0.4);
+                        }
+                    }
+                    enemyProjectiles.splice(i, 1);
+                } else if (proj.x < -proj.radius || proj.x > canvas.width + proj.radius || proj.y < -proj.radius || proj.y > canvas.height + proj.radius) {
+                    enemyProjectiles.splice(i, 1);
+                }
+            }
+        }
+
+        function applyBleeding(enemy, damage, duration) {
+            let existingBleed = bleedingEnemies.find(b => b.enemy === enemy);
+            if (existingBleed) {
+                existingBleed.endTime = Date.now() + duration;
+                existingBleed.damagePerTick = Math.min(20, existingBleed.damagePerTick + damage);
+            } else {
+                bleedingEnemies.push({
+                    enemy: enemy,
+                    damagePerTick: damage,
+                    endTime: Date.now() + duration,
+                    lastTick: Date.now(),
+                    tickInterval: 500
+                });
+            }
+        }
+
+        function updateBleedingEffects(deltaTime) {
+            const now = Date.now();
+            for (let i = bleedingEnemies.length - 1; i >= 0; i--) {
+                const bleed = bleeding[i]; // Corrected from bleedingEnemies[i] to bleed[i]
+                
+                if (now > bleed.endTime || bleed.enemy.hp <= 0) {
+                    bleedingEnemies.splice(i, 1);
+                    continue;
+                }
+
+                if (now - bleed.lastTick > bleed.tickInterval) {
+                    bleed.enemy.hp -= bleed.damagePerTick;
+                    player.totalDamageDealt += bleed.damagePerTick;
+                    damageTexts.push(new DamageText(bleed.enemy.x + bleed.enemy.width/2, bleed.enemy.y, bleed.damagePerTick, false, false, 'red'));
+                    bleed.lastTick = now;
+                }
+            }
+        }
+
+        function handleEnemyDeathDrops(enemy) {
+            // Check double item chance (Challenger Hat)
+            const rollCount = (playerStats.doubleItemChance > 0 && Math.random() < playerStats.doubleItemChance) ? 2 : 1;
+
+            for (let i = 0; i < rollCount; i++) {
+                // Healing Orb
+                if (Math.random() < playerStats.healingOrbChance) {
+                    healingOrbs.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2, radius: 10, color: 'green', value: player.maxHp * 0.1 });
+                }
+                // Soul Orb
+                if (Math.random() < playerStats.soulOrbChance) {
+                    soulOrbs.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2, radius: 8, color: 'blue', value: 20 });
+                }
+            }
+
+            // Fragmentation
+            if (playerStats.fragmentationCount > 0) {
+                for (let i = 0; i < playerStats.fragmentationCount; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const targetX = enemy.x + Math.cos(angle) * 100;
+                    const targetY = enemy.y + Math.sin(angle) * 100;
+                    enemyProjectiles.push(new Projectile(
+                        enemy.x + enemy.width / 2, enemy.y + enemy.height / 2,
+                        targetX, targetY, false, enemy.contactDamage / 2, 'normal'
+                    ));
+                }
+            }
+        }
+
+        function updateOrbs(deltaTime) {
+            for (let i = healingOrbs.length - 1; i >= 0; i--) {
+                const orb = healingOrbs[i];
+                const dx = player.x + player.width / 2 - orb.x;
+                const dy = player.y + player.height / 2 - orb.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < 100) {
+                    const angle = Math.atan2(dy, dx);
+                    orb.x += Math.cos(angle) * 3;
+                    orb.y += Math.sin(angle) * 3;
+                }
+
+                if (checkCircleRectangleCollision(orb, player)) {
+                    player.hp = Math.min(player.maxHp, player.hp + orb.value);
+                    healingOrbs.splice(i, 1);
+                }
+            }
+
+            for (let i = soulOrbs.length - 1; i >= 0; i--) {
+                const orb = soulOrbs[i];
+                const dx = player.x + player.width / 2 - orb.x;
+                const dy = player.y + player.height / 2 - orb.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < 100) {
+                    const angle = Math.atan2(dy, dx);
+                    orb.x += Math.cos(angle) * 3;
+                    orb.y += Math.sin(angle) * 3;
+                }
+
+                if (checkCircleRectangleCollision(orb, player)) {
+                    player.exp += orb.value;
+                    soulOrbs.splice(i, 1);
+                }
+            }
+        }
+
+        function updateDamageTexts(deltaTime) {
+            const now = Date.now();
+            for (let i = damageTexts.length - 1; i >= 0; i--) {
+                const text = damageTexts[i];
+                text.y += text.dy * (deltaTime / 16.67);
+                text.alpha = 1 - (now - text.spawnTime) / text.lifetime;
+
+                if (text.alpha <= 0) {
+                    damageTexts.splice(i, 1);
+                }
+            }
+        }
+
+        function updateScreenShake(deltaTime) {
+            if (screenShakeAmount > 0) {
+                const now = Date.now();
+                if (now < lastScreenShakeTime + screenShakeDuration) {
+                    const shakeX = Math.random() * screenShakeAmount * 2 - screenShakeAmount;
+                    const shakeY = Math.random() * screenShakeAmount * 2 - screenShakeAmount;
+                    canvas.style.transform = `translate(${shakeX}px, ${shakeY}px)`;
+                } else {
+                    screenShakeAmount = 0;
+                    canvas.style.transform = 'translate(0, 0)';
+                }
+            }
+        }
+
+        function triggerScreenShake(amount, duration) {
+            screenShakeAmount = amount;
+            screenShakeDuration = duration;
+            lastScreenShakeTime = Date.now();
+        }
+
+        function updateDamageFlash(deltaTime) {
+            if (damageFlashAlpha > 0) {
+                damageFlashAlpha -= deltaTime * 0.003;
+                if (damageFlashAlpha < 0) damageFlashAlpha = 0;
+            }
+        }
+
+
+        function checkLevelUp() {
+            if (player.exp >= player.expToLevelUp) {
+                player.level++;
+                player.exp = player.exp - player.expToLevelUp;
+                player.expToLevelUp = Math.round(player.expToLevelUp * 1.5);
+                showUpgradeMenu = true;
+                gameRunning = false;
+                displayUpgradeChoices();
+            }
+        }
+
+        function getRandomUpgrades(count) {
+            const availableUpgrades = [...allUpgrades];
+            const chosen = [];
+
+            let commonWeight = 1;
+            let uncommonWeight = 1 + playerStats.chanceToRollUncommon; // Increased by Uncommon Hat too
+            let epicWeight = 0.5;
+
+            let totalWeight = commonWeight + uncommonWeight + epicWeight;
+
+            for (let i = 0; i < count; i++) {
+                const rand = Math.random() * totalWeight;
+                let pickTier;
+
+                if (rand < commonWeight) {
+                    pickTier = 'Comum';
+                } else if (rand < commonWeight + uncommonWeight) {
+                    pickTier = 'Incomum';
+                } else {
+                    pickTier = 'Épico';
+                }
+
+                const filteredByTier = availableUpgrades.filter(u => u.tier === pickTier && !chosen.includes(u));
+
+                if (filteredByTier.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * filteredByTier.length);
+                    chosen.push(filteredByTier[randomIndex]);
+                    const indexInAvailable = availableUpgrades.indexOf(filteredByTier[randomIndex]);
+                    if (indexInAvailable > -1) {
+                        availableUpgrades.splice(indexInAvailable, 1);
+                    }
+                } else {
+                    // Fallback to any available if specific tier is exhausted
+                    if (availableUpgrades.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * availableUpgrades.length);
+                        chosen.push(availableUpgrades[randomIndex]);
+                        availableUpgrades.splice(randomIndex, 1);
+                    }
+                }
+            }
+            return chosen;
+        }
+
+
+        function displayUpgradeChoices() {
+            upgradeOptionsContainer.innerHTML = '';
+            const choicesCount = 3 + playerStats.extraItemChoices;
+            const upgrades = getRandomUpgrades(choicesCount);
+
+            upgrades.forEach(upgrade => {
+                const optionDiv = document.createElement('div');
+                optionDiv.classList.add('upgrade-option');
+                optionDiv.innerHTML = `<h3>${upgrade.name} <span style="font-size:0.7em; color:${getTierColor(upgrade.tier)};">(${upgrade.tier})</span></h3><p>${upgrade.description}</p>`;
+                optionDiv.onclick = () => selectUpgrade(upgrade);
+                upgradeOptionsContainer.appendChild(optionDiv);
+            });
+            upgradeMenu.style.display = 'flex';
+        }
+
+        function getTierColor(tier) {
+            switch (tier) {
+                case "Comum": return "gray";
+                case "Incomum": return "blue";
+                case "Épico": return "purple";
+                default: return "white";
+            }
+        }
+
+
+        function selectUpgrade(upgrade) {
+            upgrade.effect();
+            if (acquiredUpgrades[upgrade.name]) {
+                acquiredUpgrades[upgrade.name]++;
+            } else {
+                acquiredUpgrades[upgrade.name] = 1;
+            }
+
+            upgradeMenu.style.display = 'none';
+            gameRunning = true;
+            showUpgradeMenu = false;
+        }
+
+        function displayGameOverMenu() {
+            finalEnemiesKilledSpan.textContent = enemiesKilled;
+            finalDamageDealtSpan.textContent = Math.round(player.totalDamageDealt);
+            gameOverMenu.style.display = 'flex';
+        }
+
+        function togglePauseMenu() {
+            isPaused = !isPaused;
+            if (isPaused) {
+                pauseMenu.style.display = 'flex';
+                gameRunning = false;
+                updateUpgradesList();
+            } else {
+                pauseMenu.style.display = 'none';
+                gameRunning = true;
+            }
+        }
+
+        function updateUpgradesList() {
+            upgradesListDiv.innerHTML = '';
+            for (const upgradeName in acquiredUpgrades) {
+                const count = acquiredUpgrades[upgradeName];
+                const upgradeInfo = document.createElement('div');
+                upgradeInfo.textContent = `${upgradeName} (x${count})`;
+                upgradesListDiv.appendChild(upgradeInfo);
+            }
+            if (Object.keys(acquiredUpgrades).length === 0) {
+                upgradesListDiv.textContent = "Nenhum upgrade adquirido ainda.";
+            }
+        }
+
+        function resumeGame() {
+            isPaused = false;
+            pauseMenu.style.display = 'none';
+            gameRunning = true;
+        }
+
+        function restartGameFromPause() {
+            resumeGame();
+            initializeGame();
+        }
+
+        function showStartMenuScreen() {
+            gameRunning = false;
+            showUpgradeMenu = false;
+            showGameOverMenu = false;
+            isPaused = false;
+            showStartMenu = true;
+            showCustomizeMenu = false;
+
+            startMenu.style.display = 'flex';
+            upgradeMenu.style.display = 'none';
+            gameOverMenu.style.display = 'none';
+            pauseMenu.style.display = 'none';
+            customizeMenu.style.display = 'none';
+
+            // Clear canvas only when going back to main menu
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.style.transform = 'translate(0, 0)';
+        }
+
+        function startGame() {
+            startMenu.style.display = 'none';
+            initializeGame();
+        }
+
+        function showCustomizeScreen() {
+            showStartMenu = false;
+            startMenu.style.display = 'none';
+            customizeMenu.style.display = 'flex';
+            drawPlayerPreview(playerOutfit.hat, playerOutfit.staff); // Draw initial preview
+            updateCustomizationDescription(playerOutfit.hat, playerOutfit.staff); // Show initial description
+        }
+
+        function selectCustomization(type, value) {
+            if (type === 'hat') {
+                playerOutfit.hat = value;
+            } else if (type === 'staff') {
+                playerOutfit.staff = value;
+            }
+            drawPlayerPreview(playerOutfit.hat, playerOutfit.staff); // Update preview
+            updateCustomizationDescription(playerOutfit.hat, playerOutfit.staff); // Update description
+        }
+
+        function updateCustomizationDescription(hatType, staffType) { // NEW
+            let descriptionText = "";
+            if (hatType) {
+                descriptionText += `<h4>Chapéu: ${hatType}</h4><p>${hatsData[hatType] || 'Nenhuma descrição disponível.'}</p>`;
+            }
+            if (staffType) {
+                descriptionText += `<h4>Cajado: ${staffType}</h4><p>${staffsData[staffType] || 'Nenhuma descrição disponível.'}</p>`;
+            }
+            selectedItemDescription.innerHTML = descriptionText;
+        }
+
+
+        // --- Drawing Functions ---
+
+        function drawPlayer(context, p, currentHat, currentStaff) {
+            // Default player body and robe
+            context.fillStyle = p.invincible ? 'rgba(100, 100, 150, 0.6)' : '#3F3F74';
+            context.fillRect(p.x, p.y + p.height * 0.1, p.width, p.height * 0.9);
+            context.fillStyle = p.invincible ? 'rgba(150, 150, 200, 0.6)' : '#6A5ACD';
+            context.fillRect(p.x + p.width * 0.1, p.y + p.height * 0.2, p.width * 0.8, p.height * 0.7);
+
+            // Staff drawing
+            drawStaff(context, p, currentStaff);
+
+            // Hat drawing
+            drawHat(context, p, currentHat);
+        }
+
+        function drawHat(context, p, hatType) {
+            // Save context state to avoid affecting other drawings
+            context.save();
+            // Translate context to player's position for easier relative drawing
+            context.translate(p.x, p.y);
+
+            const hatYOffset = p.height * 0.1; // Base of the head for hats
+
+            switch (hatType) {
+                case 'MageHat':
+                    context.fillStyle = p.invincible ? 'rgba(50, 50, 100, 0.6)' : '#2D2D57';
+                    context.fillRect(0, 0, p.width, hatYOffset); // Base of the hat
+                    context.beginPath();
+                    context.moveTo(p.width / 2, -p.height * 0.1); // Tip of the hat
+                    context.lineTo(-p.width * 0.1, hatYOffset); // Bottom-left point
+                    context.lineTo(p.width * 1.1, hatYOffset); // Bottom-right point
+                    context.closePath();
+                    context.fill();
+                    context.fillStyle = p.invincible ? 'rgba(0, 0, 0, 0.6)' : '#1a1a2e'; // Band
+                    context.fillRect(p.width * 0.2, hatYOffset * 0.5, p.width * 0.6, hatYOffset * 0.3);
+                    break;
+                case 'Helmet':
+                    context.fillStyle = p.invincible ? 'rgba(150, 150, 150, 0.6)' : '#A9A9A9'; // Gray helmet
+                    context.fillRect(p.width * 0.1, -p.height * 0.05, p.width * 0.8, p.height * 0.3);
+                    context.fillStyle = p.invincible ? 'rgba(100, 100, 100, 0.6)' : '#808080'; // Darker gray visor
+                    context.fillRect(p.width * 0.2, p.height * 0.1, p.width * 0.6, p.height * 0.05);
+                    break;
+                case 'PropellerHat':
+                    context.fillStyle = p.invincible ? 'rgba(255, 100, 100, 0.6)' : 'red'; // Red cap
+                    context.beginPath();
+                    context.arc(p.width / 2, hatYOffset, p.width * 0.3, Math.PI, Math.PI * 2);
+                    context.fill();
+
+                    context.fillStyle = p.invincible ? 'rgba(200, 200, 200, 0.6)' : '#E0E0E0'; // Silver propeller base
+                    context.fillRect(p.width / 2 - 3, -10, 6, 10);
+                    context.fillStyle = p.invincible ? 'rgba(0, 255, 0, 0.6)' : 'lime'; // Green propeller
+                    context.beginPath();
+                    context.ellipse(p.width / 2, -15, 15, 3, 0, 0, Math.PI * 2);
+                    context.fill();
+                    break;
+                case 'UncommonHat':
+                    context.fillStyle = p.invincible ? 'rgba(100, 100, 255, 0.6)' : 'blue'; // Blue hat
+                    context.beginPath();
+                    context.moveTo(p.width / 2, 0);
+                    context.lineTo(0, hatYOffset);
+                    context.lineTo(p.width, hatYOffset);
+                    context.closePath();
+                    context.fill();
+                    context.fillRect(0, hatYOffset * 0.5, p.width, hatYOffset * 0.5); // Bottom brim
+                    break;
+                case 'ChallengerHat':
+                    context.fillStyle = p.invincible ? 'rgba(255, 100, 255, 0.6)' : 'magenta'; // Magenta hat
+                    context.beginPath();
+                    context.moveTo(p.width / 2, -10);
+                    context.lineTo(-5, hatYOffset);
+                    context.lineTo(p.width + 5, hatYOffset);
+                    context.closePath();
+                    context.fill();
+                    context.fillStyle = p.invincible ? 'rgba(255, 255, 0, 0.6)' : 'yellow'; // Yellow star
+                    context.beginPath();
+                    context.arc(p.width / 2, hatYOffset * 0.5, 5, 0, Math.PI * 2);
+                    context.fill();
+                    break;
+            }
+            context.restore(); // Restore context to previous state
+        }
+
+        function drawStaff(context, p, staffType) {
+            context.save();
+            context.translate(p.x, p.y);
+
+            context.strokeStyle = p.invincible ? 'rgba(139, 69, 19, 0.6)' : '#8B4513';
+            context.lineWidth = 4;
+
+            // Common staff base relative to player
+            const staffBaseX = p.width / 2 + 8;
+            const staffBaseY = p.height;
+            const staffTipX = p.width / 2 + 18;
+            const staffTipY = -p.height * 0.2;
+
+            context.beginPath();
+            context.moveTo(staffBaseX, staffBaseY);
+            context.lineTo(staffTipX, staffTipY);
+            context.stroke();
+
+            switch (staffType) {
+                case 'MageStaff':
+                    context.fillStyle = p.invincible ? 'rgba(0, 255, 255, 0.6)' : '#00FFFF';
+                    context.beginPath();
+                    context.arc(staffTipX, staffTipY - 5, 6, 0, Math.PI * 2);
+                    context.fill();
+                    break;
+                case 'EmeraldStaff':
+                    context.fillStyle = p.invincible ? 'rgba(0, 255, 0, 0.6)' : 'lime';
+                    context.beginPath();
+                    context.rect(staffTipX - 8, staffTipY - 15, 16, 16); // Square gem
+                    context.fill();
+                    break;
+                case 'Trident':
+                    context.fillStyle = p.invincible ? 'rgba(0, 150, 255, 0.6)' : 'deepskyblue';
+                    context.beginPath();
+                    context.moveTo(staffTipX, staffTipY - 10);
+                    context.lineTo(staffTipX - 10, staffTipY);
+                    context.lineTo(staffTipX + 10, staffTipY);
+                    context.closePath();
+                    context.fill();
+                    context.beginPath(); // Middle spike
+                    context.moveTo(staffTipX, staffTipY - 15);
+                    context.lineTo(staffTipX, staffTipY - 5);
+                    context.stroke();
+                    break;
+                case 'ExplosiveStaff':
+                    context.fillStyle = p.invincible ? 'rgba(255, 0, 0, 0.6)' : 'red';
+                    context.beginPath();
+                    context.arc(staffTipX, staffTipY - 5, 10, 0, Math.PI * 2); // Larger, red orb
+                    context.fill();
+                    break;
+                case 'ThunderStaff':
+                    context.fillStyle = p.invincible ? 'rgba(255, 255, 0, 0.6)' : 'yellow';
+                    context.strokeStyle = p.invincible ? 'rgba(255, 255, 0, 0.6)' : 'yellow';
+                    context.lineWidth = 2;
+                    // Lightning bolt shape
+                    context.beginPath();
+                    context.moveTo(staffTipX, staffTipY - 15);
+                    context.lineTo(staffTipX + 5, staffTipY - 5);
+                    context.lineTo(staffTipX - 5, staffTipY - 5);
+                    context.lineTo(staffTipX, staffTipY + 5);
+                    context.stroke();
+                    context.fill();
+                    break;
+                case 'FrozenTip':
+                    context.fillStyle = p.invincible ? 'rgba(100, 200, 255, 0.6)' : 'skyblue';
+                    context.beginPath();
+                    context.moveTo(staffTipX, staffTipY - 15);
+                    context.lineTo(staffTipX - 8, staffTipY + 5);
+                    context.lineTo(staffTipX + 8, staffTipY + 5);
+                    context.closePath();
+                    context.fill();
+                    break;
+                case 'RainbowStaff':
+                    const rainbowColors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet'];
+                    for(let i = 0; i < rainbowColors.length; i++) {
+                        context.fillStyle = p.invincible ? `rgba(${parseInt(rainbowColors[i].slice(1,3), 16)}, ${parseInt(rainbowColors[i].slice(3,5), 16)}, ${parseInt(rainbowColors[i].slice(5,7), 16)}, 0.6)` : rainbowColors[i];
+                        context.beginPath();
+                        context.arc(staffTipX, staffTipY - 5, 6, (Math.PI * 2 / rainbowColors.length) * i, (Math.PI * 2 / rainbowColors.length) * (i + 1));
+                        context.lineTo(staffTipX, staffTipY - 5);
+                        context.fill();
+                    }
+                    break;
+            }
+            context.restore();
+        }
+
+
+        function drawPlayerPreview(hatType, staffType) {
+            playerPreviewCtx.clearRect(0, 0, playerPreviewCanvas.width, playerPreviewCanvas.height);
+
+            // Create a temporary player object for drawing
+            const previewPlayer = {
+                x: playerPreviewCanvas.width / 2 - 16,
+                y: playerPreviewCanvas.height - 64, // Position at bottom
+                width: 32,
+                height: 64,
+                invincible: false // Always draw clearly
+            };
+
+            drawPlayer(playerPreviewCtx, previewPlayer, hatType, staffType);
+        }
+
+
+        function drawTerrain() {
+            ctx.fillStyle = '#2D2D57';
+            ctx.beginPath();
+            ctx.moveTo(terrainPoints[0].x, terrainPoints[0].y);
+
+            for (let i = 1; i < terrainPoints.length; i++) {
+                ctx.lineTo(terrainPoints[i].x, terrainPoints[i].y);
+            }
+
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.lineTo(0, canvas.height);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let i = 0; i < terrainPoints.length; i++) {
+                ctx.moveTo(terrainPoints[i].x, terrainPoints[i].y);
+                ctx.lineTo(terrainPoints[i].x, canvas.height);
+            }
+            ctx.stroke();
+        }
+
+
+        function drawEnemies() {
+            enemies.forEach(enemy => {
+                const barWidth = enemy.width;
+                const barHeight = 5;
+                const barX = enemy.x;
+                const barY = enemy.y - barHeight - 2;
+                ctx.fillStyle = 'gray';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+                ctx.fillStyle = 'lime';
+                ctx.fillRect(barX, barY, (enemy.hp / enemy.maxHp) * barWidth, barHeight);
+
+                if (enemy.type === 'shooter') {
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(enemy.x, enemy.y + enemy.height / 2, enemy.width, enemy.height / 2);
+                    ctx.fillRect(enemy.x + enemy.width * 0.1, enemy.y, enemy.width * 0.8, enemy.height / 2);
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(enemy.x + enemy.width * 0.2, enemy.y + enemy.height * 0.2, 5, 5);
+                    ctx.fillRect(enemy.x + enemy.width * 0.8 - 5, enemy.y + enemy.height * 0.2, 5, 5);
+                    ctx.fillStyle = '#A0522D';
+                    ctx.fillRect(enemy.x + enemy.width * 0.1, enemy.y + enemy.height - 5, enemy.width * 0.3, 5);
+                    ctx.fillRect(enemy.x + enemy.width * 0.6, enemy.y + enemy.height - 5, enemy.width * 0.3, 5);
+
+                } else if (enemy.type === 'swift') {
+                    ctx.fillStyle = '#32CD32';
+                    ctx.beginPath();
+                    ctx.arc(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.width / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#000';
+                    ctx.beginPath();
+                    ctx.arc(enemy.x + enemy.width * 0.3, enemy.y + enemy.height * 0.4, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(enemy.x + enemy.width * 0.7, enemy.y + enemy.height * 0.4, 3, 0, Math.PI * 2);
+                    ctx.fill();
+
+                } else if (enemy.type === 'tank') {
+                    ctx.fillStyle = '#4F4F4F';
+                    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    ctx.fillStyle = '#696969';
+                    ctx.beginPath();
+                    ctx.moveTo(enemy.x + enemy.width * 0.1, enemy.y);
+                    ctx.lineTo(enemy.x + enemy.width * 0.25, enemy.y - 10);
+                    ctx.lineTo(enemy.x + enemy.width * 0.4, enemy.y);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(enemy.x + enemy.width * 0.5, enemy.y);
+                    ctx.lineTo(enemy.x + enemy.width * 0.65, enemy.y - 10);
+                    ctx.lineTo(enemy.x + enemy.width * 0.8, enemy.y);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(enemy.x, enemy.y + enemy.height * 0.2);
+                    ctx.lineTo(enemy.x - 10, enemy.y + enemy.height * 0.35);
+                    ctx.lineTo(enemy.x, enemy.y + enemy.height * 0.5);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(enemy.x + enemy.width, enemy.y + enemy.height * 0.2);
+                    ctx.lineTo(enemy.x + enemy.width + 10, enemy.y + enemy.height * 0.35);
+                    ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height * 0.5);
+                    ctx.fill();
+                }
+            });
+        }
+
+        function drawProjectiles() {
+            playerProjectiles.forEach(proj => {
+                ctx.fillStyle = proj.color;
+                ctx.beginPath();
+                if (proj.type === 'thunder') {
+                    ctx.fillRect(proj.x - proj.radius / 2, proj.y - proj.radius, proj.radius, proj.radius * 2);
+                } else if (proj.type === 'friction' || proj.type === 'explosive') { // Explosive also draws as square
+                    ctx.rect(proj.x - proj.radius / 2, proj.y - proj.radius / 2, proj.radius, proj.radius);
+                    ctx.fill();
+                } else {
+                    ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+            enemyProjectiles.forEach(proj => {
+                ctx.fillStyle = proj.color;
+                ctx.beginPath();
+                ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawUI() {
+            const hpBarWidth = 200;
+            const barHeight = 20;
+            const barPadding = 10;
+            ctx.fillStyle = 'gray';
+            ctx.fillRect(barPadding, barPadding, hpBarWidth, barHeight);
+            ctx.fillStyle = 'red';
+            ctx.fillRect(barPadding, barPadding, (player.hp / player.maxHp) * hpBarWidth, barHeight);
+            ctx.fillStyle = 'white';
+            ctx.font = '16px "Press Start 2P"';
+            ctx.fillText(`HP: ${Math.round(player.hp)}/${player.maxHp}`, barPadding + 5, barPadding + barHeight - 5);
+
+            const expBarWidth = 200;
+            const expBarY = barPadding * 2 + barHeight;
+            ctx.fillStyle = 'gray';
+            ctx.fillRect(barPadding, expBarY, expBarWidth, barHeight);
+            ctx.fillStyle = 'cyan';
+            ctx.fillRect(barPadding, expBarY, (player.exp / player.expToLevelUp) * expBarWidth, barHeight);
+            ctx.fillStyle = 'white';
+            ctx.fillText(`LVL ${player.level} EXP: ${Math.round(player.exp)}/${player.expToLevelUp}`, barPadding + 5, expBarY + barHeight - 5);
+
+            const damageCounterY = expBarY + barHeight + barPadding;
+            ctx.fillStyle = 'white';
+            ctx.fillText(`Dano: ${Math.round(player.totalDamageDealt)}`, barPadding + 5, damageCounterY + barHeight - 5);
+
+            const daysCounterY = damageCounterY + barHeight + barPadding;
+            ctx.fillStyle = 'white';
+            ctx.fillText(`Dia: ${gameDays}`, barPadding + 5, daysCounterY + barHeight - 5);
+
+
+            if (player.hasBarrier) {
+                ctx.fillStyle = player.barrierActive ? 'lightblue' : 'darkblue';
+                ctx.fillRect(canvas.width - 50, barPadding, 40, barHeight);
+                ctx.fillStyle = 'white';
+                ctx.fillText('B', canvas.width - 35, barPadding + barHeight - 5);
+            }
+        }
+
+        function drawOrbs() {
+            healingOrbs.forEach(orb => {
+                ctx.fillStyle = orb.color;
+                ctx.beginPath();
+                ctx.arc(orb.x, orb.y, orb.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            soulOrbs.forEach(orb => {
+                ctx.fillStyle = orb.color;
+                ctx.beginPath();
+                ctx.arc(orb.x, orb.y, orb.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawWisp() {
+            if (player.willOWisp && wisp) {
+                ctx.fillStyle = wisp.color;
+                ctx.fillRect(wisp.x, wisp.y, wisp.width, wisp.height);
+            }
+        }
+
+        function drawDamageTexts() {
+            damageTexts.forEach(text => {
+                ctx.save();
+                ctx.globalAlpha = text.alpha;
+                ctx.fillStyle = text.color;
+                ctx.font = `${text.fontSize} "Press Start 2P"`;
+                ctx.textAlign = 'center';
+                ctx.fillText(text.value, text.x, text.y);
+                ctx.restore();
+            });
+        }
+
+        function drawDamageFlash() {
+            if (damageFlashAlpha > 0) {
+                ctx.save();
+                ctx.globalAlpha = damageFlashAlpha * 0.5;
+                ctx.fillStyle = 'red';
+                const borderWidth = 10;
+                ctx.fillRect(0, 0, canvas.width, borderWidth);
+                ctx.fillRect(0, canvas.height - borderWidth, canvas.width, borderWidth);
+                ctx.fillRect(0, borderWidth, borderWidth, canvas.height - borderWidth * 2);
+                ctx.fillRect(canvas.width - borderWidth, borderWidth, borderWidth, canvas.height - borderWidth * 2);
+                ctx.restore();
+            }
+        }
+
+        // --- Game Loop ---
+
+        let lastTime = 0;
+        function gameLoop(currentTime) {
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            if (gameRunning && !isPaused && !showUpgradeMenu && !showGameOverMenu && !showStartMenu && !showCustomizeMenu) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                updatePlayer(deltaTime);
+                updateEnemies(deltaTime);
+                updateProjectiles(deltaTime);
+                updateOrbs(deltaTime);
+                updateDamageTexts(deltaTime);
+                updateScreenShake(deltaTime);
+                updateDamageFlash(deltaTime);
+                updateBleedingEffects(deltaTime);
+                checkLevelUp();
+
+                drawTerrain();
+                drawPlayer(ctx, player, playerOutfit.hat, playerOutfit.staff); // Pass context and outfit
+                drawWisp();
+                drawEnemies();
+                drawProjectiles();
+                drawOrbs();
+                drawUI();
+                drawDamageTexts();
+                drawDamageFlash();
+            } else if (isPaused || showUpgradeMenu || showGameOverMenu || (showStartMenu && !gameRunning) || (showCustomizeMenu && !gameRunning)) { // Ensure draw happens for menus
+                 // Only draw if a menu is active and game is not running (i.e., paused or in a menu state)
+                 // This ensures the last frame is visible behind the menu.
+                 if (lastTime > 0) { // Avoid drawing before first frame
+                     drawTerrain();
+                     drawPlayer(ctx, player, playerOutfit.hat, playerOutfit.staff);
+                     drawWisp();
+                     drawEnemies();
+                     drawProjectiles();
+                     drawOrbs();
+                     drawUI();
+                     drawDamageTexts();
+                     drawDamageFlash();
+                 }
+            }
+
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- Event Listeners ---
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'a' || e.key === 'A') keys.a = true;
+            if (e.key === 'd' || e.key === 'D') keys.d = true;
+            if (e.key === ' ') {
+                if (gameRunning && !isPaused && !showUpgradeMenu && !showGameOverMenu && !showStartMenu && !showCustomizeMenu) {
+                    if (player.currentJumps > 0) {
+                        player.dy = player.jumpForce;
+                        player.isJumping = true;
+                        player.currentJumps--;
+                        player.onGround = false;
+                    }
+                }
+            }
+            if (e.key === 'Escape') {
+                if (gameRunning) {
+                    togglePauseMenu();
+                } else if (showGameOverMenu || showUpgradeMenu || showCustomizeMenu) {
+                     showStartMenuScreen();
+                } else if (showStartMenu) {
+                    // Do nothing, already at start menu
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'a' || e.key === 'A') keys.a = false;
+            if (e.key === 'd' || e.key === 'D') keys.d = false;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0 && gameRunning && !isPaused && !showUpgradeMenu && !showGameOverMenu && !showStartMenu && !showCustomizeMenu) {
+                mouseDown = true;
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (e.button === 0) {
+                mouseDown = false;
+            }
+        });
+
+        restartButton.addEventListener('click', initializeGame);
+        resumeButton.addEventListener('click', resumeGame);
+        returnToMainMenuButton.addEventListener('click', restartGameFromPause);
+        returnToStartFromGameoverButton.addEventListener('click', showStartMenuScreen);
+
+        playButton.addEventListener('click', startGame);
+        customizeButton.addEventListener('click', showCustomizeScreen);
+        backToStartFromCustomizeButton.addEventListener('click', showStartMenuScreen);
+
+        // Add event listeners for customization options
+        customizeOptions.forEach(button => {
+            button.addEventListener('click', () => {
+                const type = button.dataset.type;
+                const value = button.dataset.value;
+                selectCustomization(type, value);
+            });
+        });
+
+
+        // Initial call to show the start menu
+        showStartMenuScreen();
+        gameLoop(0); // Start the game loop
+    </script>
+
+<script>
+    function gameLoop(timestamp) {
+        if (gameRunning) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const deltaTime = 16.67;
+
+            updatePlayer(deltaTime);
+            updateEnemies(deltaTime);
+            updateProjectiles(deltaTime);
+            updateOrbs(deltaTime);
+            updateBleedingEffects(deltaTime);
+            updateDamageTexts(deltaTime);
+            updateScreenShake(deltaTime);
+            updateDamageFlash(deltaTime);
+            checkLevelUp();
+
+            drawTerrain();
+            drawPlayer();
+            drawEnemies();
+            drawProjectiles();
+            drawOrbs();
+            drawDamageTexts();
+            drawHUD();
+        }
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    function drawTerrain() {
+        ctx.fillStyle = "#222244";
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height);
+        terrainPoints.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    function drawPlayer() {
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+
+        // Chapéu simples
+        ctx.fillStyle = "yellow";
+        ctx.fillRect(player.x + 4, player.y - 10, player.width - 8, 10);
+
+        // Cajado simples
+        ctx.strokeStyle = "brown";
+        ctx.beginPath();
+        ctx.moveTo(player.x + player.width, player.y + player.height / 2);
+        ctx.lineTo(player.x + player.width + 15, player.y + player.height / 2);
+        ctx.stroke();
+    }
+
+    function drawHUD() {
+        ctx.fillStyle = "#fff";
+        ctx.font = "12px 'Press Start 2P'";
+        ctx.textAlign = "left";
+        ctx.fillText(`HP: ${Math.round(player.hp)}/${player.maxHp}`, 20, 30);
+        ctx.fillText(`XP: ${player.exp}/${player.expToLevelUp}`, 20, 50);
+        ctx.fillText(`Nível: ${player.level}`, 20, 70);
+        ctx.fillText(`Dia: ${gameDays}`, 20, 90);
+    }
+
+    customizeOptions.forEach(option => {
+        option.addEventListener("click", () => {
+            const type = option.dataset.type;
+            const value = option.dataset.value;
+            playerOutfit[type] = value;
+            drawPlayerPreview(playerOutfit.hat, playerOutfit.staff);
+            updateCustomizationDescription(playerOutfit.hat, playerOutfit.staff);
+        });
+    });
+
+    function drawPlayerPreview(hat, staff) {
+        playerPreviewCtx.clearRect(0, 0, playerPreviewCanvas.width, playerPreviewCanvas.height);
+
+        // Corpo
+        playerPreviewCtx.fillStyle = "#fff";
+        playerPreviewCtx.fillRect(40, 100, 20, 40);
+
+        // Chapéu
+        playerPreviewCtx.fillStyle = "yellow";
+        playerPreviewCtx.fillRect(40, 90, 20, 10);
+
+        // Cajado
+        playerPreviewCtx.strokeStyle = "brown";
+        playerPreviewCtx.beginPath();
+        playerPreviewCtx.moveTo(60, 120);
+        playerPreviewCtx.lineTo(80, 120);
+        playerPreviewCtx.stroke();
+    }
+
+    function updateCustomizationDescription(hat, staff) {
+        const hatDesc = hatsData[hat] || "";
+        const staffDesc = staffsData[staff] || "";
+        selectedItemDescription.innerHTML = `<strong>Chapéu:</strong> ${hatDesc}<br><strong>Cajado:</strong> ${staffDesc}`;
+    }
+
+    playButton.addEventListener('click', () => {
+        startGame();
+        requestAnimationFrame(gameLoop);
+    });
+
+    customizeButton.addEventListener('click', showCustomizeScreen);
+    backToStartFromCustomizeButton.addEventListener('click', showStartMenuScreen);
+    resumeButton.addEventListener('click', resumeGame);
+    returnToMainMenuButton.addEventListener('click', showStartMenuScreen);
+    restartButton.addEventListener('click', () => {
+        initializeGame();
+        requestAnimationFrame(gameLoop);
+    });
+    returnToStartFromGameoverButton.addEventListener('click', showStartMenuScreen);
+</script>
+</body>
+</html>
